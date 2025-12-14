@@ -1,0 +1,16 @@
+{
+  "name": "Badbaado Aid Track",
+  "short_name": "Badbaado",
+  "description": "Humanitarian aid coordination for drought-affected regions",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F7F9FB",
+  "theme_color": "#1E3A5F",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    }
+  ]
+}
