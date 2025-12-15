@@ -14,16 +14,203 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      aid_records: {
+        Row: {
+          aid_type: Database["public"]["Enums"]["aid_type"]
+          area_id: string
+          created_at: string
+          delivery_date: string
+          id: string
+          notes: string | null
+          organization_id: string
+          quantity: number
+          submitted_by: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          aid_type: Database["public"]["Enums"]["aid_type"]
+          area_id: string
+          created_at?: string
+          delivery_date: string
+          id?: string
+          notes?: string | null
+          organization_id: string
+          quantity: number
+          submitted_by: string
+          unit: string
+          updated_at?: string
+        }
+        Update: {
+          aid_type?: Database["public"]["Enums"]["aid_type"]
+          area_id?: string
+          created_at?: string
+          delivery_date?: string
+          id?: string
+          notes?: string | null
+          organization_id?: string
+          quantity?: number
+          submitted_by?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aid_records_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "aid_records_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      areas: {
+        Row: {
+          country: string
+          created_at: string
+          district: string
+          id: string
+          latitude: number
+          longitude: number
+          population: number
+          region: string
+          updated_at: string
+          village: string
+        }
+        Insert: {
+          country: string
+          created_at?: string
+          district: string
+          id: string
+          latitude: number
+          longitude: number
+          population?: number
+          region: string
+          updated_at?: string
+          village: string
+        }
+        Update: {
+          country?: string
+          created_at?: string
+          district?: string
+          id?: string
+          latitude?: number
+          longitude?: number
+          population?: number
+          region?: string
+          updated_at?: string
+          village?: string
+        }
+        Relationships: []
+      }
+      organizations: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          name: string
+          type: Database["public"]["Enums"]["org_type"]
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          type?: Database["public"]["Enums"]["org_type"]
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          type?: Database["public"]["Enums"]["org_type"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          full_name: string | null
+          id: string
+          organization_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          full_name?: string | null
+          id: string
+          organization_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          full_name?: string | null
+          id?: string
+          organization_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_organization_id: { Args: { _user_id: string }; Returns: string }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      aid_type: "water" | "food" | "health" | "cash"
+      app_role: "admin" | "ngo_user" | "viewer"
+      org_type: "ngo" | "government" | "partner"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +337,10 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      aid_type: ["water", "food", "health", "cash"],
+      app_role: ["admin", "ngo_user", "viewer"],
+      org_type: ["ngo", "government", "partner"],
+    },
   },
 } as const
