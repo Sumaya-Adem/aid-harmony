@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Area, AidType, AID_TYPE_LABELS, Organization, DuplicateWarning } from '@/types/aid';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,7 +22,7 @@ import {
 import { AidTypeIcon } from './AidTypeIcon';
 import { DuplicateWarningDialog } from './DuplicateWarningDialog';
 import { useToast } from '@/hooks/use-toast';
-import { MapPin, Send, AlertCircle } from 'lucide-react';
+import { MapPin, Send, AlertCircle, Lock } from 'lucide-react';
 
 interface AidSubmitFormProps {
   open: boolean;
@@ -39,7 +40,7 @@ interface AidSubmitFormProps {
     unit: string;
     deliveryDate: string;
     notes?: string;
-  }) => void;
+  }) => Promise<unknown>;
 }
 
 const aidTypes: AidType[] = ['water', 'food', 'health', 'cash'];
@@ -61,10 +62,15 @@ export function AidSubmitForm({
   onSubmit,
 }: AidSubmitFormProps) {
   const { toast } = useToast();
+  const { user, profile, isAdmin } = useAuth();
+  
+  // If user has an organization, pre-select it
+  const defaultOrgId = profile?.organization_id || '';
+  
   const [formData, setFormData] = useState({
     areaId: selectedArea?.id || '',
     aidType: '' as AidType | '',
-    organizationId: '',
+    organizationId: defaultOrgId,
     quantity: '',
     unit: '',
     deliveryDate: new Date().toISOString().split('T')[0],
@@ -72,6 +78,21 @@ export function AidSubmitForm({
   });
   const [duplicateWarning, setDuplicateWarning] = useState<DuplicateWarning | null>(null);
   const [showWarningDialog, setShowWarningDialog] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Update org when profile loads
+  useEffect(() => {
+    if (profile?.organization_id) {
+      setFormData(prev => ({ ...prev, organizationId: profile.organization_id || '' }));
+    }
+  }, [profile?.organization_id]);
+
+  // Reset form when area changes
+  useEffect(() => {
+    if (selectedArea) {
+      setFormData(prev => ({ ...prev, areaId: selectedArea.id }));
+    }
+  }, [selectedArea]);
 
   const handleAreaChange = (areaId: string) => {
     setFormData(prev => ({ ...prev, areaId }));
@@ -85,8 +106,17 @@ export function AidSubmitForm({
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!user) {
+      toast({
+        title: 'Authentication required',
+        description: 'Please sign in to submit aid reports.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     if (!formData.areaId || !formData.aidType || !formData.organizationId || !formData.quantity) {
       toast({
@@ -110,13 +140,15 @@ export function AidSubmitForm({
       return;
     }
 
-    submitForm();
+    await submitForm();
   };
 
-  const submitForm = () => {
+  const submitForm = async () => {
+    setIsSubmitting(true);
+    
     const org = organizations.find(o => o.id === formData.organizationId);
     
-    onSubmit({
+    const result = await onSubmit({
       areaId: formData.areaId,
       aidType: formData.aidType as AidType,
       organizationId: formData.organizationId,
@@ -127,26 +159,54 @@ export function AidSubmitForm({
       notes: formData.notes || undefined,
     });
 
-    toast({
-      title: 'Aid report submitted',
-      description: 'The aid delivery has been recorded successfully.',
-    });
+    setIsSubmitting(false);
 
-    // Reset form
-    setFormData({
-      areaId: '',
-      aidType: '',
-      organizationId: '',
-      quantity: '',
-      unit: '',
-      deliveryDate: new Date().toISOString().split('T')[0],
-      notes: '',
-    });
-    setShowWarningDialog(false);
-    onClose();
+    if (result) {
+      toast({
+        title: 'Aid report submitted',
+        description: 'The aid delivery has been recorded successfully.',
+      });
+
+      // Reset form
+      setFormData({
+        areaId: '',
+        aidType: '',
+        organizationId: defaultOrgId,
+        quantity: '',
+        unit: '',
+        deliveryDate: new Date().toISOString().split('T')[0],
+        notes: '',
+      });
+      setShowWarningDialog(false);
+      onClose();
+    }
   };
 
   const selectedAreaData = areas.find(a => a.id === formData.areaId);
+
+  // Check if user can select organization (admins can, regular users use their assigned org)
+  const canSelectOrg = isAdmin || !profile?.organization_id;
+
+  if (!user) {
+    return (
+      <Sheet open={open} onOpenChange={onClose}>
+        <SheetContent side="right" className="w-full sm:max-w-md">
+          <div className="h-full flex flex-col items-center justify-center text-center p-6">
+            <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center mb-4">
+              <Lock className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Sign in required</h3>
+            <p className="text-muted-foreground mb-4">
+              You need to sign in to submit aid reports.
+            </p>
+            <Button onClick={() => window.location.href = '/auth'}>
+              Sign In
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+    );
+  }
 
   return (
     <>
@@ -215,21 +275,32 @@ export function AidSubmitForm({
             {/* Organization */}
             <div className="space-y-2">
               <Label htmlFor="org">Organization *</Label>
-              <Select 
-                value={formData.organizationId} 
-                onValueChange={v => setFormData(prev => ({ ...prev, organizationId: v }))}
-              >
-                <SelectTrigger id="org" className="touch-target">
-                  <SelectValue placeholder="Select organization" />
-                </SelectTrigger>
-                <SelectContent>
-                  {organizations.map(org => (
-                    <SelectItem key={org.id} value={org.id}>
-                      {org.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {canSelectOrg ? (
+                <Select 
+                  value={formData.organizationId} 
+                  onValueChange={v => setFormData(prev => ({ ...prev, organizationId: v }))}
+                >
+                  <SelectTrigger id="org" className="touch-target">
+                    <SelectValue placeholder="Select organization" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {organizations.map(org => (
+                      <SelectItem key={org.id} value={org.id}>
+                        {org.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="p-3 rounded-lg bg-muted/50 border border-border">
+                  <p className="text-sm font-medium">
+                    {organizations.find(o => o.id === formData.organizationId)?.name || 'Your organization'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    You can only submit reports for your organization
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Quantity and Unit */}
@@ -300,8 +371,13 @@ export function AidSubmitForm({
             </div>
 
             {/* Submit Button */}
-            <Button type="submit" className="w-full touch-target" size="lg">
-              Submit Report
+            <Button 
+              type="submit" 
+              className="w-full touch-target" 
+              size="lg"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Submitting...' : 'Submit Report'}
             </Button>
           </form>
         </SheetContent>

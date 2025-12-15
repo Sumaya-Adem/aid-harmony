@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useAidData } from '@/hooks/useAidData';
+import { useAuth } from '@/contexts/AuthContext';
 import { Header } from '@/components/Header';
 import { StatsCard } from '@/components/StatsCard';
 import { FilterBar } from '@/components/FilterBar';
@@ -13,8 +14,8 @@ import {
   AlertTriangle, 
   CheckCircle, 
   XCircle, 
-  Users,
-  TrendingUp 
+  TrendingUp,
+  Loader2 
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -23,10 +24,13 @@ export default function Dashboard() {
     aidRecords, 
     organizations, 
     stats,
+    loading,
     getRecordsByArea,
     checkDuplicateAid,
     addAidRecord,
   } = useAidData();
+
+  const { user } = useAuth();
 
   // UI State
   const [selectedArea, setSelectedArea] = useState<Area | null>(null);
@@ -99,6 +103,17 @@ export default function Dashboard() {
   const handleOpenSubmitForm = () => {
     setShowSubmitForm(true);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading aid data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
